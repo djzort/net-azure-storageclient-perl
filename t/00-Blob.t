@@ -6,6 +6,11 @@ use Test::More;
 my $res;
 my $error = 0;
 
+if ($ENV{AUTOMATED_TESTING}) {
+    plan skip_all =>
+    'Testing this module required account and primary access key of Windows Azure Blob Storage.';
+}
+
 my $account_name = '';
 my $primary_access_key = '';
 
@@ -15,7 +20,7 @@ if (! $account_name ) {
     chomp( $account_name );
 }
 
-if (! $primary_access_key ) {
+if ($account_name and ! $primary_access_key ) { #ask only when account name was provided
     diag 'Please enter your primary access key of Windows Azure Blob Storage:';
     $primary_access_key = <STDIN>;
     chomp( $primary_access_key );
@@ -25,11 +30,8 @@ if ( (! $account_name ) || (! $primary_access_key ) ) {
     plan skip_all =>
     'Testing this module required account and primary access key of Windows Azure Blob Storage.';
 } else {
-    plan tests => 17;
+    plan tests => 15;
 }
-
-use_ok( 'Net::Azure::StorageClient' );
-use_ok( 'Net::Azure::StorageClient::Blob' );
 
 if ( (! $account_name ) || (! $primary_access_key ) ) {
     die "account_name and primary_access_key are required."
