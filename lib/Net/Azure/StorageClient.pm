@@ -55,7 +55,7 @@ sub sign {
     my $canonicalized_headers = join '', map { lc( $_ ) . ':' .
        $req->header( $_ ) . "\n" } sort grep { /^x-ms/ } keys %{ $req->headers };
     my $account = $req->uri->authority;
-    $account =~ s/^([^.]*).*$/$1/;
+    $account =~ s/^(\w+).*$/$1/;
     my $path = $req->uri->path;
     my $canonicalized_resource = "/${account}${path}";
     $canonicalized_resource .= join '', map { "\n" . lc( $_ ) . ':' .
