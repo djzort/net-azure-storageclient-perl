@@ -1035,7 +1035,7 @@ sub _get_directory_info {
             $options .= '&prefix=' . $dir;
         }
         my $blobs;
-        my $list_params = { options => $options };
+        my $list_params = { options => $options, headers => $params->{headers} };
         my $res = $blobService->list( $container_name, $list_params );
         my $responses;
         if ( ( ref $res ) ne 'ARRAY' ) {
