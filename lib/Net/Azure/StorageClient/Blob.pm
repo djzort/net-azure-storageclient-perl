@@ -883,7 +883,7 @@ sub _put {
     $path = $blobService->_adjust_path( $path );
     my $filename = $params->{ filename };
     my $options = $params->{ options };
-    $path .= '&' . $options if $options;
+    $path .= '?' . $options if $options;
     my $blob_type = $params->{ blob_type } || 'BlockBlob';
     $params->{ headers }->{ 'x-ms-blob-type' } = $blob_type;
     if (! $params->{ no_metadata } ) {
