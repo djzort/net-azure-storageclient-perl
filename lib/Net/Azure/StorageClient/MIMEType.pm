@@ -1,6 +1,9 @@
-package Net::Azure::StorageClient::MIMEType;
+#!/bin/false
+
 use strict;
 use warnings;
+
+package Net::Azure::StorageClient::MIMEType;
 {
   $Net::Azure::StorageClient::MIMEType = '0.1';
 }
@@ -12,17 +15,14 @@ sub new {
 }
 
 sub init {
-    my $obj = shift;
-    my %args = @_;
+    my ($obj, %args) = @_;
     $obj->{ default } = $args{ default } || 'application/octet-stream';
     return $obj;
 }
 
 sub get_mimetype {
-    my $self = shift;
-    my $filename = shift;
-    my $default = shift;
-    if ( ( ref $self ) ne 'Azure::StorageClient::MIMEType' ) {
+    my ($self, $filename, $default) = @_;
+    if ( ref $self ne 'Azure::StorageClient::MIMEType' ) {
         $default = $filename;
         $filename = $self;
     }
@@ -116,19 +116,18 @@ sub get_mimetype {
         'xlsx'   => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'json'   => 'application/json',
     };
-    if ( $filename =~ /\.([^.]+)\z/ ) {
+    if ( $filename =~ m/\.([^.]+)\z/ ) {
         my $extension = lc( $1 );
         if ( $extension && $mime_types->{ $extension } ) {
             return $mime_types->{ $extension };
         }
     }
     if (! $default ) {
-        if ( ( ref $self ) eq 'Azure::StorageClient::MIMEType' ) {
+        if ( ref $self eq 'Azure::StorageClient::MIMEType' ) {
             $default = $self->{ default };
         }
     }
-    $default = 'application/octet-stream' unless $default;
-    return $default;
+    return $default || 'application/octet-stream';
 }
 
 1;

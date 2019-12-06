@@ -1,50 +1,52 @@
-package Net::Azure::StorageClient;
+#!/bin/false
+
 use strict;
 use warnings;
+
+package Net::Azure::StorageClient;
 {
   $Net::Azure::StorageClient::VERSION = '0.5';
 }
 use LWP::UserAgent;
-use HTTP::Date;
+use HTTP::Date qw/ time2str /;
 use URI::QueryParam;
 use MIME::Base64;
 use Digest::SHA qw( hmac_sha256_base64 );
+use Digest::MD5 qw( md5_base64 );
 
 sub new {
     my $class = shift;
     my %args  = @_;
     my $type = $args{ type };
-    if ( $type && $type =~ /^Blob$/i ) { # |Table|Queue
+    if ( $type && $type =~ m/^Blob$/i ) { # |Table|Queue
         $type = ucfirst( $type );
-        $class .= "::" . $type;
-        eval "use $class;";
+        $class .= '::' . $type;
+        eval "require $class;";
         # die "Unsupported StorageClient $class: $@" if $@;
     }
     my $obj = bless {}, $class;
     $obj->{ type } = lc( $type ) if $type;
+    $obj->{ _ua } = LWP::UserAgent->new;
     $obj->init( @_ );
 }
 
 sub init {
-    my $storageClient = shift;
-    my %args = @_;
-    $storageClient->{ account_name } = $args{ account_name };
-    $storageClient->{ primary_access_key } = $args{ primary_access_key };
-    $storageClient->{ api_version } = $args{ api_version } || '2012-02-12';
-    $storageClient->{ protocol } = $args{ protocol } || 'https';
-    return $storageClient;
+    my ( $self, %args ) = @_;
+    $self->{ account_name } = $args{ account_name };
+    $self->{ primary_access_key } = $args{ primary_access_key };
+    $self->{ api_version } = $args{ api_version } || '2012-02-12';
+    $self->{ protocol } = $args{ protocol } || 'https';
+    return $self;
 }
 
 sub sign {
-    my $storageClient = shift;
-    my ( $req, $params ) = @_;
-    my $key = $storageClient->{ primary_access_key };
-    my $api_version = $storageClient->{ api_version };
+    my ( $self, $req, $params ) = @_;
+    my $key = $self->{ primary_access_key };
+    my $api_version = $self->{ api_version };
     $req->header( 'x-ms-version', $api_version );
-    $req->header( 'x-ms-date', HTTP::Date::time2str() );
+    $req->header( 'x-ms-date', time2str() );
     if ( my $data = $params->{ body } ) {
-        require Digest::MD5;
-        $req->header( 'Content-MD5', Digest::MD5::md5_base64( $data ) . '==' );
+        $req->header( 'Content-MD5', md5_base64( $data ) . '==' );
         # $req->header( 'If-None-Match', '*' );
     }
     if ( $params && ( my $headers = $params->{ headers } ) ) {
@@ -88,16 +90,15 @@ sub sign {
 }
 
 sub request {
-    my $storageClient = shift;
-    my ( $method, $url, $params ) = @_;
+    my ( $self, $method, $url, $params ) = @_;
     $url = '' unless ( $url );
     if ( $url !~ m!^https{0,1}://! ) {
         if ( $url !~ m !^/! ) {
             $url = '/' . $url;
         }
-        my $type = $storageClient->{ type };
-        my $account = $storageClient->{ account_name };
-        my $protocol = $storageClient->{ protocol };
+        my $type = $self->{ type };
+        my $account = $self->{ account_name };
+        my $protocol = $self->{ protocol };
         $url = "${protocol}://${account}.${type}.core.windows.net${url}";
     }
     my $body;
@@ -105,42 +106,40 @@ sub request {
         $body = $params->{ body };
     }
     $method = 'GET' unless $method;
-    my $req = new HTTP::Request( $method => $url );
+    my $req = HTTP::Request->new( $method => $url );
     $req->content_length( length( $body ) ) if defined $body;
-    $req = $storageClient->sign( $req, $params );
+    $req = $self->sign( $req, $params );
     $req->content( $body ) if defined $body;
-    my $ua = LWP::UserAgent->new;
-    return $ua->request( $req );
+    return $self->{ _ua }->request( $req );
 }
 
 sub get {
-    my $storageClient = shift;
-    $storageClient->request( 'GET', @_ );
+    my $self = shift;
+    $self->request( 'GET', @_ );
 }
 
 sub head {
-    my $storageClient = shift;
-    $storageClient->request( 'HEAD', @_ );
+    my $self = shift;
+    $self->request( 'HEAD', @_ );
 }
 
 sub put {
-    my $storageClient = shift;
-    $storageClient->request( 'PUT', @_ );
+    my $self = shift;
+    $self->request( 'PUT', @_ );
 }
 
 sub delete {
-    my $storageClient = shift;
-    $storageClient->request( 'DELETE', @_ );
+    my $self = shift;
+    $self->request( 'DELETE', @_ );
 }
 
 sub post {
-    my $storageClient = shift;
-    $storageClient->request( 'POST', @_ );
+    my $self = shift;
+    $self->request( 'POST', @_ );
 }
 
 sub _signed_identifier {
-    my $storageClient = shift;
-    my $length = shift;
+    my ( $self, $length ) = @_;
     my @char = () ;
     push @char, ( 'a' .. 'z' );
     push @char, ( 'A' .. 'Z' );
@@ -153,16 +152,15 @@ sub _signed_identifier {
 }
 
 sub _adjust_path {
-    my $storageClient = shift;
-    my $path = shift;
+    my ( $self, $path ) = @_;
     $path =~ s!^/!!;
-    if ( my $type = $storageClient->{ type } ) {
+    if ( my $type = $self->{ type } ) {
         my $arg;
         if ( $type eq 'blob' ) {
             $arg = 'container_name'
         }
         # table, queue...
-        if ( $arg && ( my $root = $storageClient->{ $arg } ) ) {
+        if ( $arg && ( my $root = $self->{ $arg } ) ) {
             $path = $root . '/' . $path;
         }
     }
@@ -193,7 +191,7 @@ Net::Azure::StorageClient - Windows Azure Storage Client
 Specifying the authorization header to HTTP::Request object.
 http://msdn.microsoft.com/en-us/library/dd179428.aspx
 
-    my $req = new HTTP::Request( 'GET', $url );
+    my $req = HTTP::Request->new( 'GET', $url );
     $req = $StorageClient->sign( $req, $params );
 
 =head2 request
@@ -210,7 +208,7 @@ Specifying the authorization header and send request.
     my $res = $StorageClient->request( 'GET', $url );
 
     # Request with custom http headers and request body. Send POST request.
-    my $params = { 
+    my $params = {
                    headers => { 'x-ms-foo' => 'bar', },
                    body => $request_body,
                  };

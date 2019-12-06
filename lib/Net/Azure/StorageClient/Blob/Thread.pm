@@ -1,7 +1,10 @@
-package Net::Azure::StorageClient::Blob::Thread;
-use base qw/Net::Azure::StorageClient::Blob/;
+#!/bin/false
+
 use strict;
 use warnings;
+
+package Net::Azure::StorageClient::Blob::Thread;
+use base qw/Net::Azure::StorageClient::Blob/;
 {
   $Net::Azure::StorageClient::Blob::Thread::VERSION = '0.11';
 }
@@ -10,23 +13,22 @@ use threads;
 use Thread::Semaphore;
 
 sub download_use_thread {
-    my $blobService = shift;
-    my ( $args ) = @_;
+    my ( $self, $args ) = @_;
     my $thread = $args->{ thread } || 10;
-    my $semaphore = new Thread::Semaphore( $thread );
+    my $semaphore = Thread::Semaphore->new( $thread );
     my $download_items = $args->{ download_items };
     my $params = $args->{ params };
     my $container_name = $args->{ container_name };
     my %th;
     for my $key ( keys %$download_items ) {
         my $item;
-        if ( $blobService->{ container_name } ) {
+        if ( $self->{ container_name } ) {
             $item = $key;
         } else {
             $item = $container_name . '/' . $key,
         }
-        $th{ $key } = new threads(\&_download,
-                                    $blobService,
+        $th{ $key } = threads->new(\&_download,
+                                    $self,
                                     $item,
                                     $download_items->{ $key },
                                     $params,
@@ -41,26 +43,24 @@ sub download_use_thread {
 }
 
 sub _download {
-    my $blobService = shift;
-    my ( $from, $to, $params, $semaphore ) = @_;
+    my ( $self, $from, $to, $params, $semaphore ) = @_;
     $semaphore->down();
     $params->{ force } = 1;
-    my $res = $blobService->download( $from, $to, $params );
+    my $res = $self->download( $from, $to, $params );
     $semaphore->up();
     return $res;
 }
 
 sub upload_use_thread {
-    my $blobService = shift;
-    my ( $args ) = @_;
+    my ( $self, $args ) = @_;
     my $thread = $args->{ thread } || 10;
-    my $semaphore = new Thread::Semaphore( $thread );
+    my $semaphore = Thread::Semaphore->new( $thread );
     my $upload_items = $args->{ upload_items };
     my $params = $args->{ params };
     my %th;
     for my $key ( keys %$upload_items ) {
-        $th{ $key } = new threads(\&_upload,
-                                    $blobService,
+        $th{ $key } = threads->new(\&_upload,
+                                    $self,
                                     $key,
                                     $upload_items->{ $key },
                                     $params,
@@ -75,11 +75,10 @@ sub upload_use_thread {
 }
 
 sub _upload {
-    my $blobService = shift;
-    my ( $from, $to, $params, $semaphore ) = @_;
+    my ( $self, $from, $to, $params, $semaphore ) = @_;
     $semaphore->down();
     $params->{ force } = 1;
-    my $res = $blobService->upload( $from, $to, $params );
+    my $res = $self->upload( $from, $to, $params );
     $semaphore->up();
     return $res;
 }

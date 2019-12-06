@@ -1,7 +1,10 @@
-package Net::Azure::StorageClient::Blob;
-use base qw/Net::Azure::StorageClient/;
+#!/bin/false
+
 use strict;
 use warnings;
+
+package Net::Azure::StorageClient::Blob;
+use base qw/Net::Azure::StorageClient/;
 {
   $Net::Azure::StorageClient::Blob::VERSION = '0.92';
 }
@@ -10,35 +13,40 @@ use XML::Simple;
 use Digest::MD5;
 use Encode;
 use File::Basename;
+use HTTP::Date qw/ str2time /;
+use File::Path qw/ mkpath /;
+use File::Find qw();
 
 sub init {
-    my $blobService = shift;
-    my %args = @_;
-    $blobService->SUPER::init( @_ );
+    my ( $self, %args ) = @_;
+    $self->SUPER::init( @_ );
     my $container_name = $args{ container_name };
     if ( $container_name ) {
         $container_name =~ s!/!!g;
-        $blobService->{ container_name } = $container_name;
+        $self->{ container_name } = $container_name;
     }
-    $blobService->{ type } = 'blob';
-    return $blobService;
+    $self->{ type } = 'blob';
+    return $self;
 }
 
 sub list_containers {
-    my $blobService = shift;
+    my $self = shift;
     my ( $params ) = @_;
-    return $blobService->list( '', $params );
+    return $self->list( '', $params );
 }
 
+{ # scope $xml
+
+my $xml = XML::Simple->new;
+
 sub set_blob_service_properties {
-    my $blobService = shift;
+    my $self = shift;
     my ( $params ) = @_;
-    my $prop = $blobService->get_blob_service_properties( $params );
+    my $prop = $self->get_blob_service_properties( $params );
     if ( $prop->code != 200 ) {
         return $prop;
     }
     my $result = $prop->content;
-    my $xml = XML::Simple->new;
     my $list = $xml->XMLin( $result );
     my $properties = $params->{ StorageServicePropertie };
     my @properties_Logging = qw/ Version Delete Write Read /;
@@ -68,20 +76,22 @@ sub set_blob_service_properties {
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $params->{ body } = $body;
-    return $blobService->put( $data, $params );
+    return $self->put( $data, $params );
 }
 
+} # scope $xml
+
 sub get_blob_service_properties {
-    my $blobService = shift;
+    my $self = shift;
     my ( $params ) = @_;
     my $data = '?restype=service&comp=properties';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
-    return $blobService->get( $data, $params );
+    return $self->get( $data, $params );
 }
 
 sub create_container {
-    my $blobService = shift;
+    my $self = shift;
     my ( $name, $params ) = @_;
     $name =~ s!^/!!;
     my $data = 'restype=container';
@@ -89,57 +99,57 @@ sub create_container {
     $data .= '&' . $options if $options;
     my $path = "${name}?${data}";
     if ( my $public_access = $params->{ public_access } ) {
-        if ( $public_access !~ /^blob|container$/ ) {
+        if ( $public_access !~ m/^blob|container$/ ) {
             $public_access = 'container';
         }
         $params->{ headers }->{ 'x-ms-blob-public-access' } = $public_access;
     }
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub get_container_properties {
-    my $blobService = shift;
-    return $blobService->get_properties( @_ );
+    my $self = shift;
+    return $self->get_properties( @_ );
 }
 
 sub get_container_metadata {
-    my $blobService = shift;
-    return $blobService->get_metadata( @_ );
+    my $self = shift;
+    return $self->get_metadata( @_ );
 }
 
 sub set_container_metadata {
-    my $blobService = shift;
-    return $blobService->set_metadata( @_ );
+    my $self = shift;
+    return $self->set_metadata( @_ );
 }
 
 sub get_container_acl {
-    my $blobService = shift;
+    my $self = shift;
     my ( $name, $params ) = @_;
     $name =~ s!^/!!;
     $name .= '?restype=container&comp=acl';
     my $options = $params->{ options };
     $name .= '&' . $options if $options;
-    return $blobService->get( $name, $params );
+    return $self->get( $name, $params );
 }
 
 sub set_container_acl {
-    my $blobService = shift;
+    my $self = shift;
     my ( $name, $params ) = @_;
     $name =~ s!^/!!;
     $name .= '?restype=container&comp=acl';
     my $options = $params->{ options };
     $name .= '&' . $options if $options; # timeout=n
     if ( my $public_access = $params->{ public_access } ) {
-        if ( $public_access !~ /^blob|container$/ ) {
+        if ( $public_access !~ m/^blob|container$/ ) {
             $public_access = 'container';
         }
         $params->{ headers }->{ 'x-ms-blob-public-access' } = $public_access;
     }
     my $Permission = $params->{ Permission } || 'rwdl';
     my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime( time );
-    my $ts = sprintf( "%04d-%02d-%02d", $year + 1900, $mon + 1, $mday );
-    my $id = $blobService->_signed_identifier( 64 );
+    my $ts = sprintf( '%04d-%02d-%02d', $year + 1900, $mon + 1, $mday );
+    my $id = $self->_signed_identifier( 64 );
     my $SignedIdentifiers = { SignedIdentifier => { Id => $id,
                               AccessPolicy => { Start => $ts,
                                                 Expiry => $ts,
@@ -148,133 +158,133 @@ sub set_container_acl {
     my $body = $xml->XMLout( $SignedIdentifiers, NoAttr => 1, RootName => 'SignedIdentifiers' );
     $body = '<?xml version="1.0" encoding="utf-8"?>' . "\n${body}";
     $params->{ body } = $body;
-    return $blobService->put( $name, $params );
+    return $self->put( $name, $params );
 }
 
 sub delete_container {
-    my $blobService = shift;
+    my $self = shift;
     my ( $name, $params ) = @_;
     $name =~ s!^/!!;
     my $data = 'restype=container';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     my $path = "${name}?${data}";
-    return $blobService->delete( $path, $params );
+    return $self->delete( $path, $params );
 }
 
 sub lease_container {
-    my $blobService = shift;
-    return $blobService->lease( @_ );
+    my $self = shift;
+    return $self->lease( @_ );
 }
 
 sub list_blobs {
-    my $blobService = shift;
+    my $self = shift;
     if ( wantarray ) {
-        my @blobs = $blobService->list( @_ );
+        my @blobs = $self->list( @_ );
         return @blobs;
     }
-    my $blobs = $blobService->list( @_ );
+    my $blobs = $self->list( @_ );
     return $blobs;
 }
 
 sub put_blob {
-    my $blobService = shift;
-    return $blobService->_put( @_ );
+    my $self = shift;
+    return $self->_put( @_ );
 }
 
 sub get_blob {
-    my $blobService = shift;
-    return $blobService->_get( @_ );
+    my $self = shift;
+    return $self->_get( @_ );
 }
 
 sub get_blob_properties {
-    my $blobService = shift;
-    return $blobService->get_properties( @_ );
+    my $self = shift;
+    return $self->get_properties( @_ );
 }
 
 sub set_blob_properties {
-    my $blobService = shift;
-    return $blobService->set_properties( @_ );
+    my $self = shift;
+    return $self->set_properties( @_ );
 }
 
 sub get_blob_metadata {
-    my $blobService = shift;
-    return $blobService->get_metadata( @_ );
+    my $self = shift;
+    return $self->get_metadata( @_ );
 }
 
 sub set_blob_metadata {
-    my $blobService = shift;
-    return $blobService->set_metadata( @_ );
+    my $self = shift;
+    return $self->set_metadata( @_ );
 }
 
 sub snapshot_blob {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=snapshot';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $path = "${path}?${data}";
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub copy_blob {
-    my $blobService = shift;
+    my $self = shift;
     my ( $src, $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
-    $src = $blobService->_adjust_path( $src );
+    $path = $self->_adjust_path( $path );
+    $src = $self->_adjust_path( $src );
     my $data = '';
-    my $account = $blobService->{ account_name };
-    my $protocol = $blobService->{ protocol };
-    my $type = lc( $blobService->{ type } );
+    my $account = $self->{ account_name };
+    my $protocol = $self->{ protocol };
+    my $type = lc( $self->{ type } );
     my $options = $params->{ options };
     $path .= '?' . $options if $options;
     $data .= '?' . $options if $options;
     my $url = "${protocol}://${account}.${type}.core.windows.net/${src}";
     $params->{ headers }->{ 'x-ms-copy-source' } = $url;
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub abort_copy_blob {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=copy&copyid=' . $params->{ copyid };
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $path = "${path}?${data}";
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub delete_blob {
-    my $blobService = shift;
-    return $blobService->remove( @_ );
+    my $self = shift;
+    return $self->remove( @_ );
 }
 
 sub lease_blob {
-    my $blobService = shift;
-    return $blobService->lease( @_ );
+    my $self = shift;
+    return $self->lease( @_ );
 }
 
 sub put_block {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=block&blockid=id' . $params->{ blockid };
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $path = "${path}?${data}";
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub put_block_list {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=blocklist';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
@@ -284,24 +294,24 @@ sub put_block_list {
     my $body = $xml->XMLout( $BlockList, NoAttr => 1, RootName => 'BlockList' );
     $body = '<?xml version="1.0" encoding="utf-8"?>' . "\n${body}";
     $params->{ body } = $body;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub get_block_list {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=blocklist';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $path = "${path}?${data}";
-    return $blobService->get( $path, $params );
+    return $self->get( $path, $params );
 }
 
 sub put_page {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=page';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
@@ -311,49 +321,49 @@ sub put_page {
     $params->{ headers }->{ 'x-ms-page-write' } = $page_write if $page_write;
     $params->{ headers }->{ 'x-ms-range' } = $range if $range;
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub get_page_ranges {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=pagelist';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
     $path = "${path}?${data}";
-    return $blobService->get( $path, $params );
+    return $self->get( $path, $params );
 }
 
 sub rename_blob {
-    my $blobService = shift;
+    my $self = shift;
     my ( $src, $path, $params ) = @_;
-    my $res = $blobService->copy_blob( $src, $path, $params );
-    $blobService->remove( $src );
+    my $res = $self->copy_blob( $src, $path, $params );
+    $self->remove( $src );
     return $res;
 }
 
 sub download_container {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $dirname, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
     }
     $params->{ directory } = 1;
-    return $blobService->download( $path, $dirname, $params );
+    return $self->download( $path, $dirname, $params );
 }
 
 sub download_blob {
-    my $blobService = shift;
-    return $blobService->download( @_ );
+    my $self = shift;
+    return $self->download( @_ );
 }
 
 sub download {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $filename, $params ) = @_;
     my $dir_info = '';
     if ( $params->{ directory } || $path =~ m!/$! ) {
-        $dir_info = $blobService->_get_directory_info( $path, $filename, $params );
+        $dir_info = $self->_get_directory_info( $path, $filename, $params );
     }
     if ( $dir_info ) {
         # Download blobs of directory
@@ -367,7 +377,6 @@ sub download {
         my @removed;
         my $prefix = quotemeta( $path );
         my $base = quotemeta( $filename );
-        require HTTP::Date;
         my @_blobs;
         for my $blob ( @$blobs ) {
             my $name = $blob->{ Name };
@@ -408,7 +417,7 @@ sub download {
                         }
                         if ( $etag ) {
                             my $data = '';
-                            open my $fh, "<$file" or die "Can't open '$file'.";
+                            open( my $fh, '<', $file ) or die "Can't open '$file'.";
                             binmode $fh;
                             while ( read $fh, my ( $chunk ), 8192 ) {
                                 $data .= $chunk;
@@ -419,7 +428,7 @@ sub download {
                                 $not_modified = 1;
                             }
                         } else {
-                            my $mtime = $blobService->_get_mtime( $blob );
+                            my $mtime = $self->_get_mtime( $blob );
                             my @stats = stat $file;
                             if ( $stats[ 9 ] >= $mtime ) {
                                 $not_modified = 1;
@@ -443,7 +452,7 @@ sub download {
         if ( my $thread = $params->{ use_thread } ) {
             require Net::Azure::StorageClient::Blob::Thread;
             @responses = Net::Azure::StorageClient::Blob::Thread::download_use_thread(
-              $blobService, 
+              $self,
             { download_items => $download_items,
               params => $params,
               container_name => $container_name,
@@ -452,13 +461,13 @@ sub download {
             for my $key ( keys %$download_items ) {
                 $params->{ force } = 1;
                 my $item;
-                if ( $blobService->{ container_name } ) {
+                if ( $self->{ container_name } ) {
                     $item = $key;
                 } else {
                     $item = $container_name . '/' . $key;
                 }
                 $params->{ directory } = undef;
-                my $res = $blobService->download( $item,
+                my $res = $self->download( $item,
                                                   $download_items->{ $key },
                                                   $params );
                 push ( @responses, $res );
@@ -492,29 +501,29 @@ sub download {
         return undef;
     }
     $params->{ filename } = $filename;
-    return $blobService->_get( $path, $params );
+    return $self->_get( $path, $params );
 }
 
 sub upload_container {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $dirname, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
     }
-    return $blobService->upload( $path, $dirname, $params );
+    return $self->upload( $path, $dirname, $params );
 }
 
 sub upload_blob {
-    my $blobService = shift;
-    return $blobService->upload( @_ );
+    my $self = shift;
+    return $self->upload( @_ );
 }
 
 sub upload {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $filename, $params ) = @_;
     my $dir_info = '';
     if ( $params->{ directory } || $path =~ m!/$! ) {
-        $dir_info = $blobService->_get_directory_info( $path, $filename, $params );
+        $dir_info = $self->_get_directory_info( $path, $filename, $params );
     }
     if ( $dir_info ) {
         # Upload files of directory
@@ -563,7 +572,7 @@ sub upload {
                                 push ( @not_modified_items, _encode_path( $file ) );
                             }
                         } else {
-                            my $mtime = $blobService->_get_mtime( $blob );
+                            my $mtime = $self->_get_mtime( $blob );
                             my @stats = stat $file;
                             push ( @not_modified_items, $file )
                                 if ( $stats[ 9 ] <= $mtime );
@@ -598,7 +607,7 @@ sub upload {
             }
             my $item = $file;
             $item =~ s/^$search_dir//;
-            if ( $blobService->{ container_name } ) {
+            if ( $self->{ container_name } ) {
                 $item = $path . $item;
             } else {
                 $item = $container_name . '/' . $path . $item;
@@ -607,14 +616,14 @@ sub upload {
                 $uploads->{ $item } = $file;
             } else {
                 $params->{ force } = 1;
-                my $res = $blobService->upload( $item, $file, $params );
+                my $res = $self->upload( $item, $file, $params );
                 push ( @responses, $res );
             }
         }
         if ( my $thread = $params->{ use_thread } ) {
             require Net::Azure::StorageClient::Blob::Thread;
             @responses = Net::Azure::StorageClient::Blob::Thread::upload_use_thread(
-              $blobService, 
+              $self,
             { upload_items => $uploads,
               params => $params,
               thread => $thread } );
@@ -622,7 +631,7 @@ sub upload {
         if ( $params->{ sync } ) {
             my $not_remove = $params->{ not_remove };
             for my $item ( @removed_items ) {
-                if (! $blobService->{ container_name } ) {
+                if (! $self->{ container_name } ) {
                     $item = $container_name . '/' . $item;
                 }
                 if ( $not_remove ) {
@@ -636,7 +645,7 @@ sub upload {
                     }
                     next if $exclusion;
                 }
-                my $res = $blobService->remove( $item, $params );
+                my $res = $self->remove( $item, $params );
                 push ( @responses, $res );
             }
          }
@@ -644,11 +653,11 @@ sub upload {
         return undef;
     }
     $params->{ filename } = $filename;
-    return $blobService->_put( $path, $params );
+    return $self->_put( $path, $params );
 }
 
 sub sync {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $directory, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
@@ -661,11 +670,11 @@ sub sync {
     $params->{ conditional } = 1;
     $params->{ sync } = 1;
     $params->{ directory } = 1;
-    return $blobService->$direction( $path, $directory, $params );
+    return $self->$direction( $path, $directory, $params );
 }
 
 sub list {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
     $path = '' unless $path;
     $path =~ s!^/!!;
@@ -676,7 +685,7 @@ sub list {
     }
     my $options = $params->{ options };
     $path .= '&' . $options if $options;
-    my $res = $blobService->get( $path, $params );
+    my $res = $self->get( $path, $params );
     my @responses;
     push ( @responses, $res );
     if ( $res->code != 200 ) {
@@ -695,7 +704,7 @@ sub list {
         while ( $marker ) {
             $marker =~ s!([^a-zA-Z0-9_.~-])!uc sprintf "%%%02x", ord($1)!eg;
             my $next = $path . '&marker=' . $marker;
-            my $res = $blobService->get( $next, $params );
+            my $res = $self->get( $next, $params );
             if ( $res->code != 200 ) {
                 return @responses if wantarray;
                 return \@responses;
@@ -713,27 +722,27 @@ sub list {
 }
 
 sub get_metadata {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
     $params->{ 'method' } = 'HEAD';
     my $options = $params->{ options } || '';
     $options .= '&' if $options;
     $options .= 'comp=metadata';
     $params->{ options } = $options;
-    return $blobService->_get( $path, $params );
+    return $self->_get( $path, $params );
 }
 
 sub get_properties {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
     $params->{ 'method' } = 'HEAD';
-    return $blobService->_get( $path, $params );
+    return $self->_get( $path, $params );
 }
 
 sub set_properties {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $options .= 'comp=properties';
     $options .= '&' . $params->{ options } if $params->{ options };
     $params->{ options } = $options;
@@ -746,13 +755,13 @@ sub set_properties {
         $params->{ headers }->{ $property } = $properties->{ $property };
     }
     $params->{ body } = $options;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub set_metadata {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=metadata';
     if ( $path !~ m!/! ) {
         $data = 'restype=container&' . $data;
@@ -769,28 +778,28 @@ sub set_metadata {
         $params->{ headers }->{ $meta } = $metadata->{ $key };
     }
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub remove {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     if ( $path =~ /\%/ ) {
         $path = _encode_path( $path, '/' );
     }
     if ( $path !~ m!/! ) {
-        return $blobService->delete_container( $path, $params );
+        return $self->delete_container( $path, $params );
     }
     my $options = $params->{ options };
     $path .= '?' . $options if $options;
-    return $blobService->delete( $path, $params );
+    return $self->delete( $path, $params );
 }
 
 sub lease {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $data = 'comp=lease';
     if ( $path !~ m!/! ) {
         $data = 'restype=container&' . $data;
@@ -807,14 +816,14 @@ sub lease {
         $params->{ headers }->{ $parameter } = $lease_parameters->{ $key };
     }
     $params->{ body } = $data;
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub _get {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $params ) = @_;
     my $orig_path = $path;
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $filename;
     if ( $params && $params->{ filename } ) {
         $filename = $params->{ filename };
@@ -822,7 +831,7 @@ sub _get {
     if ( $filename && ( $params->{ conditional } || $params->{ sync } ) ) {
         if (! $params->{ force } ) {
             $params->{ compare } = 'from';
-            my $metadata = $blobService->_do_conditional( $orig_path, $filename, $params );
+            my $metadata = $self->_do_conditional( $orig_path, $filename, $params );
             return $metadata if $metadata;
         }
     }
@@ -839,13 +848,12 @@ sub _get {
     if ( $path =~ /\%/ ) {
         $path = _encode_path( $path, '/' );
     }
-    my $res = $blobService->request( $method, $path, $params );
+    my $res = $self->request( $method, $path, $params );
     if ( $filename ) {
         if ( $res->code == 200 ) {
             my $content = $res->content;
             my $dir = File::Basename::dirname( $filename );
             if (! -d $dir ) {
-                require File::Path;
                 File::Path::mkpath( $dir );
             }
             if ( -d $dir ) {
@@ -853,13 +861,12 @@ sub _get {
                 print $fh $content;
                 close $fh ;
                 if ( $params->{ conditional } || $params->{ sync } ) {
-                    require HTTP::Date;
                     my $mtime;
                     if( $res->headers->{ 'x-ms-meta-mtime' } ) {
                         $mtime = $res->headers->{ 'x-ms-meta-mtime' };
                     } else {
                         $mtime = $res->headers->{ 'last-modified' };
-                        $mtime = HTTP::Date::str2time( $mtime );
+                        $mtime = str2time( $mtime );
                     }
                     if ( -f $filename ) {
                         my @stat = stat $filename;
@@ -874,13 +881,13 @@ sub _get {
 }
 
 sub _put {
-    my $blobService = shift;
+    my $self = shift;
     my ( $path, $data, $params ) = @_;
     my $orig_path = $path;
     if ( ref $data eq 'HASH' ) {
         $params = $data;
     }
-    $path = $blobService->_adjust_path( $path );
+    $path = $self->_adjust_path( $path );
     my $filename = $params->{ filename };
     my $options = $params->{ options };
     $path .= '?' . $options if $options;
@@ -913,7 +920,7 @@ sub _put {
             if (! $params->{ force } ) {
                 $params->{ compare } = 'to';
                 $params->{ content } = $data;
-                my $metadata = $blobService->_do_conditional( $orig_path, $filename, $params );
+                my $metadata = $self->_do_conditional( $orig_path, $filename, $params );
                 return $metadata if $metadata;
             }
         }
@@ -940,13 +947,13 @@ sub _put {
             $path = $encoded;
         }
     }
-    return $blobService->put( $path, $params );
+    return $self->put( $path, $params );
 }
 
 sub _do_conditional {
-    my ( $blobService, $path, $filename, $params ) = @_;
+    my ( $self, $path, $filename, $params ) = @_;
     return undef if (! -f $filename );
-    my $metadata = $blobService->get_metadata( $path );
+    my $metadata = $self->get_metadata( $path );
     if ( $metadata->code == 200 ) {
         my $conditional;
         if ( -f $filename ) {
@@ -988,7 +995,7 @@ sub _do_conditional {
 }
 
 sub _get_mtime {
-    my $blobService = shift;
+    my $self = shift;
     my $blob = shift;
     my $mtime;
     if ( my $meta = $blob->{ Metadata } ) {
@@ -997,16 +1004,15 @@ sub _get_mtime {
         }
     }
     if (! $mtime ) {
-        require HTTP::Date;
         $mtime = $blob->{ Properties }->{ 'Last-Modified' };
-        $mtime = HTTP::Date::str2time( $mtime );
+        $mtime = str2time( $mtime );
     }
     return $mtime;
 }
 
 sub _get_directory_info {
-    my ( $blobService, $path, $dirname, $params ) = @_;
-    $path = $blobService->_adjust_path( $path );
+    my ( $self, $path, $dirname, $params ) = @_;
+    $path = $self->_adjust_path( $path );
     if ( $path !~ m!/! ) {
         $path .= '/';
     }
@@ -1014,7 +1020,7 @@ sub _get_directory_info {
         # Upload or Download directory
         $path = '' unless $path;
         $path =~ s!^/!!;
-        my $container_name = $blobService->{ container_name };
+        my $container_name = $self->{ container_name };
         if (! $container_name ) {
             my @split_path = split( /\//, $path );
             $container_name = $split_path[ 0 ];
@@ -1036,7 +1042,7 @@ sub _get_directory_info {
         }
         my $blobs;
         my $list_params = { options => $options, headers => $params->{headers} };
-        my $res = $blobService->list( $container_name, $list_params );
+        my $res = $self->list( $container_name, $list_params );
         my $responses;
         if ( ( ref $res ) ne 'ARRAY' ) {
             push ( @$responses, $res );
@@ -1052,18 +1058,17 @@ sub _get_directory_info {
             my $list = $xml->XMLin( $data );
             if ( my $blob_list = $list->{ Blobs }->{ Blob } ) {
                 if ( ref( $blob_list ) eq 'HASH' ) {
-                    push ( @$blobs, $blob_list ); 
+                    push ( @$blobs, $blob_list );
                 } else {
-                    push ( @$blobs, @$blob_list ); 
+                    push ( @$blobs, @$blob_list );
                 }
             }
         }
-        require File::Find;
         my $files;
         if ( -d $dirname ) {
             my $separator = $^O eq 'MSWin32' ? '\\' : '/';
             my $search_base = quotemeta( $dirname . $separator );
-            my $command = 'File::Find::find( sub { 
+            my $command = 'File::Find::find( sub {
                 my $file = $File::Find::name;
                 $file =~ s/^$search_base//;
                 my $basename = File::Basename::basename( $_ );
@@ -1162,7 +1167,7 @@ Net::Azure::StorageClient::Blob - Interface to Windows Azure Blob Service
   my $params = { headers => { 'x-ms-foo' => 'bar' },
                  options => 'timeout=90' };
   my $res = $blobService->set_metadata( $path, $params );
-  
+
   # return HTTP::Response object(s)
 
 =head2 Operation on the Account(Blob Service)
@@ -1258,7 +1263,7 @@ http://msdn.microsoft.com/en-us/library/windowsazure/dd179408.aspx
 
 =head3 lease_container
 
-The Lease Container operation establishes and manages a lock on a container for delete operations. 
+The Lease Container operation establishes and manages a lock on a container for delete operations.
 The lock duration can be 15 to 60 seconds, or can be infinite.
 http://msdn.microsoft.com/en-us/library/windowsazure/jj159103.aspx
 
