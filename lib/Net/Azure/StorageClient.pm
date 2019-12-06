@@ -26,7 +26,6 @@ sub new {
     }
     my $obj = bless {}, $class;
     $obj->{ type } = lc( $type ) if $type;
-    $obj->{ _ua } = LWP::UserAgent->new;
     $obj->init( @_ );
 }
 
@@ -89,6 +88,10 @@ sub sign {
     return $req;
 }
 
+# scope $ua
+{
+my $ua = LWP::UserAgent->new;
+
 sub request {
     my ( $self, $method, $url, $params ) = @_;
     $url = '' unless ( $url );
@@ -110,8 +113,10 @@ sub request {
     $req->content_length( length( $body ) ) if defined $body;
     $req = $self->sign( $req, $params );
     $req->content( $body ) if defined $body;
-    return $self->{ _ua }->request( $req );
+    return $ua->request( $req );
 }
+
+} # scope $ua
 
 sub get {
     my $self = shift;
