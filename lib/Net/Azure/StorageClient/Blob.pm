@@ -19,7 +19,7 @@ use File::Find qw();
 
 sub init {
     my ( $self, %args ) = @_;
-    $self->SUPER::init( @_ );
+    $self->SUPER::init( %args );
     my $container_name = $args{ container_name };
     if ( $container_name ) {
         $container_name =~ s!/!!g;
@@ -30,8 +30,7 @@ sub init {
 }
 
 sub list_containers {
-    my $self = shift;
-    my ( $params ) = @_;
+    my ( $self, $params ) = @_;
     return $self->list( '', $params );
 }
 
@@ -40,8 +39,7 @@ sub list_containers {
 my $xml = XML::Simple->new;
 
 sub set_blob_service_properties {
-    my $self = shift;
-    my ( $params ) = @_;
+    my ( $self, $params ) = @_;
     my $prop = $self->get_blob_service_properties( $params );
     if ( $prop->code != 200 ) {
         return $prop;
@@ -82,8 +80,7 @@ sub set_blob_service_properties {
 } # scope $xml
 
 sub get_blob_service_properties {
-    my $self = shift;
-    my ( $params ) = @_;
+    my ( $self, $params ) = @_;
     my $data = '?restype=service&comp=properties';
     my $options = $params->{ options };
     $data .= '&' . $options if $options;
@@ -91,8 +88,7 @@ sub get_blob_service_properties {
 }
 
 sub create_container {
-    my $self = shift;
-    my ( $name, $params ) = @_;
+    my ( $self, $name, $params ) = @_;
     $name =~ s!^/!!;
     my $data = 'restype=container';
     my $options = $params->{ options };
@@ -124,8 +120,7 @@ sub set_container_metadata {
 }
 
 sub get_container_acl {
-    my $self = shift;
-    my ( $name, $params ) = @_;
+    my ( $self, $name, $params ) = @_;
     $name =~ s!^/!!;
     $name .= '?restype=container&comp=acl';
     my $options = $params->{ options };
@@ -134,8 +129,7 @@ sub get_container_acl {
 }
 
 sub set_container_acl {
-    my $self = shift;
-    my ( $name, $params ) = @_;
+    my ( $self, $name, $params ) = @_;
     $name =~ s!^/!!;
     $name .= '?restype=container&comp=acl';
     my $options = $params->{ options };
@@ -162,8 +156,7 @@ sub set_container_acl {
 }
 
 sub delete_container {
-    my $self = shift;
-    my ( $name, $params ) = @_;
+    my ( $self, $name, $params ) = @_;
     $name =~ s!^/!!;
     my $data = 'restype=container';
     my $options = $params->{ options };
@@ -218,8 +211,7 @@ sub set_blob_metadata {
 }
 
 sub snapshot_blob {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=snapshot';
     my $options = $params->{ options };
@@ -230,8 +222,7 @@ sub snapshot_blob {
 }
 
 sub copy_blob {
-    my $self = shift;
-    my ( $src, $path, $params ) = @_;
+    my ( $self, $src, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     $src = $self->_adjust_path( $src );
     my $data = '';
@@ -248,8 +239,7 @@ sub copy_blob {
 }
 
 sub abort_copy_blob {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=copy&copyid=' . $params->{ copyid };
     my $options = $params->{ options };
@@ -270,8 +260,7 @@ sub lease_blob {
 }
 
 sub put_block {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=block&blockid=id' . $params->{ blockid };
     my $options = $params->{ options };
@@ -282,8 +271,7 @@ sub put_block {
 }
 
 sub put_block_list {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=blocklist';
     my $options = $params->{ options };
@@ -298,8 +286,7 @@ sub put_block_list {
 }
 
 sub get_block_list {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=blocklist';
     my $options = $params->{ options };
@@ -309,8 +296,7 @@ sub get_block_list {
 }
 
 sub put_page {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=page';
     my $options = $params->{ options };
@@ -325,8 +311,7 @@ sub put_page {
 }
 
 sub get_page_ranges {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=pagelist';
     my $options = $params->{ options };
@@ -336,16 +321,14 @@ sub get_page_ranges {
 }
 
 sub rename_blob {
-    my $self = shift;
-    my ( $src, $path, $params ) = @_;
+    my ( $self, $src, $path, $params ) = @_;
     my $res = $self->copy_blob( $src, $path, $params );
     $self->remove( $src );
     return $res;
 }
 
 sub download_container {
-    my $self = shift;
-    my ( $path, $dirname, $params ) = @_;
+    my ( $self, $path, $dirname, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
     }
@@ -359,8 +342,7 @@ sub download_blob {
 }
 
 sub download {
-    my $self = shift;
-    my ( $path, $filename, $params ) = @_;
+    my ( $self, $path, $filename, $params ) = @_;
     my $dir_info = '';
     if ( $params->{ directory } || $path =~ m!/$! ) {
         $dir_info = $self->_get_directory_info( $path, $filename, $params );
@@ -505,8 +487,7 @@ sub download {
 }
 
 sub upload_container {
-    my $self = shift;
-    my ( $path, $dirname, $params ) = @_;
+    my ( $self, $path, $dirname, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
     }
@@ -519,8 +500,7 @@ sub upload_blob {
 }
 
 sub upload {
-    my $self = shift;
-    my ( $path, $filename, $params ) = @_;
+    my ( $self, $path, $filename, $params ) = @_;
     my $dir_info = '';
     if ( $params->{ directory } || $path =~ m!/$! ) {
         $dir_info = $self->_get_directory_info( $path, $filename, $params );
@@ -657,8 +637,7 @@ sub upload {
 }
 
 sub sync {
-    my $self = shift;
-    my ( $path, $directory, $params ) = @_;
+    my ( $self, $path, $directory, $params ) = @_;
     if ( $path !~ m!/$! ) {
         $path .= '/';
     }
@@ -674,8 +653,7 @@ sub sync {
 }
 
 sub list {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = '' unless $path;
     $path =~ s!^/!!;
     if ( $path ) {
@@ -722,8 +700,7 @@ sub list {
 }
 
 sub get_metadata {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $params->{ 'method' } = 'HEAD';
     my $options = $params->{ options } || '';
     $options .= '&' if $options;
@@ -733,15 +710,13 @@ sub get_metadata {
 }
 
 sub get_properties {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $params->{ 'method' } = 'HEAD';
     return $self->_get( $path, $params );
 }
 
 sub set_properties {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $options .= 'comp=properties';
     $options .= '&' . $params->{ options } if $params->{ options };
@@ -759,8 +734,7 @@ sub set_properties {
 }
 
 sub set_metadata {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=metadata';
     if ( $path !~ m!/! ) {
@@ -782,8 +756,7 @@ sub set_metadata {
 }
 
 sub remove {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     if ( $path =~ /\%/ ) {
         $path = _encode_path( $path, '/' );
@@ -797,8 +770,7 @@ sub remove {
 }
 
 sub lease {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
     my $data = 'comp=lease';
     if ( $path !~ m!/! ) {
@@ -820,8 +792,7 @@ sub lease {
 }
 
 sub _get {
-    my $self = shift;
-    my ( $path, $params ) = @_;
+    my ( $self, $path, $params ) = @_;
     my $orig_path = $path;
     $path = $self->_adjust_path( $path );
     my $filename;
@@ -881,8 +852,7 @@ sub _get {
 }
 
 sub _put {
-    my $self = shift;
-    my ( $path, $data, $params ) = @_;
+    my ( $self, $path, $data, $params ) = @_;
     my $orig_path = $path;
     if ( ref $data eq 'HASH' ) {
         $params = $data;
