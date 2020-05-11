@@ -718,7 +718,7 @@ sub get_properties {
 sub set_properties {
     my ( $self, $path, $params ) = @_;
     $path = $self->_adjust_path( $path );
-    my $options .= 'comp=properties';
+    my $options = 'comp=properties';
     $options .= '&' . $params->{ options } if $params->{ options };
     $params->{ options } = $options;
     my $properties = $params->{ properties };
