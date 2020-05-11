@@ -1,4 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+
+use warnings;
 use strict;
 use lib qw( lib );
 use File::Temp qw( tempdir );
