@@ -540,7 +540,7 @@ sub upload {
                         }
                         if ( $etag ) {
                             my $data = '';
-                            open my $fh, "<$file" or die "Can't open '$file'.";
+                            open( my $fh, '<', $file) or die "Can't open '$file'.";
                             binmode $fh;
                             while ( read $fh, my ( $chunk ), 8192 ) {
                                 $data .= $chunk;
@@ -828,7 +828,7 @@ sub _get {
                 File::Path::mkpath( $dir );
             }
             if ( -d $dir ) {
-                open my $fh, ">$filename" or die "Can't open '$filename'.";
+                open( my $fh, '>', $filename) or die "Can't open '$filename'.";
                 print $fh $content;
                 close $fh ;
                 if ( $params->{ conditional } || $params->{ sync } ) {
@@ -879,7 +879,7 @@ sub _put {
         if ( $params->{ contents } && $params->{ contents }->{ $filename } ) {
             $data = $params->{ contents }->{ $filename };
         } else {
-            open my $fh, "<$filename" or die "Can't open '$filename'.";
+            open( my $fh, '<', $filename ) or die "Can't open '$filename'.";
             binmode $fh;
             while ( read $fh, my ( $chunk ), 8192 ) {
                 $data .= $chunk;
@@ -932,7 +932,7 @@ sub _do_conditional {
             my $data = $params->{ content };
             if ( $etag && (! defined( $data ) ) ) {
                 $data = '';
-                open my $fh, "<$filename" or die "Can't open '$filename'.";
+                open( my $fh, '<', $filename) or die "Can't open '$filename'.";
                 binmode $fh;
                 while ( read $fh, my ( $chunk ), 8192 ) {
                     $data .= $chunk;
