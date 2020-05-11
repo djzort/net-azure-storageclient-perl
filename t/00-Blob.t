@@ -22,7 +22,7 @@ if (! $account_name ) {
     chomp( $account_name );
 }
 
-if ($account_name and ! $primary_access_key ) { #ask only when account name was provided
+if ($account_name && ! $primary_access_key ) { #ask only when account name was provided
     diag 'Please enter your primary access key of Windows Azure Blob Storage:';
     $primary_access_key = <STDIN>;
     chomp( $primary_access_key );
@@ -31,17 +31,18 @@ if ($account_name and ! $primary_access_key ) { #ask only when account name was 
 if ( (! $account_name ) || (! $primary_access_key ) ) {
     plan skip_all =>
     'Testing this module required account and primary access key of Windows Azure Blob Storage.';
-} else {
+}
+else {
     plan tests => 15;
 }
 
 if ( (! $account_name ) || (! $primary_access_key ) ) {
-    die "account_name and primary_access_key are required."
+    die 'account_name and primary_access_key are required.'
 }
 
 my $tempdir = tempdir();
 my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime( time );
-my $ts = sprintf( "%04d%02d%02d%02d%02d%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec );
+my $ts = sprintf( '%04d%02d%02d%02d%02d%02d', $year + 1900, $mon + 1, $mday, $hour, $min, $sec );
 my $container = 'test-container-' . $ts;
 
 my $client = Net::Azure::StorageClient->new(
