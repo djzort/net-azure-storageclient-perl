@@ -63,7 +63,6 @@ sub set_blob_service_properties {
     }
     $properties->{ Metrics }->{ 'RetentionPolicy' } = $list->{ Metrics }->{ RetentionPolicy }
         unless  $properties->{ Metrics }->{ RetentionPolicy } && $list->{ Metrics }->{ RetentionPolicy };
-    my $DefaultServiceVersion;
     if (! $properties->{ DefaultServiceVersion } ) {
         $properties->{ DefaultServiceVersion } = $list->{ DefaultServiceVersion }
             if $list->{ DefaultServiceVersion };
