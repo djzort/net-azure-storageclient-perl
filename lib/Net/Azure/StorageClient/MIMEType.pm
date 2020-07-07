@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use v5.10;
 
 package Net::Azure::StorageClient::MIMEType;
 

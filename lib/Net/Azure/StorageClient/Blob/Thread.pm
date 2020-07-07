@@ -1,7 +1,8 @@
-#!/bin/false
+#!perl
 
 use strict;
 use warnings;
+use v5.10;
 
 package Net::Azure::StorageClient::Blob::Thread;
 
