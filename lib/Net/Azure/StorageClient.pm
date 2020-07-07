@@ -1,18 +1,18 @@
-#!/bin/false
+#!perl
 
 use strict;
 use warnings;
 
 package Net::Azure::StorageClient;
-{
-  $Net::Azure::StorageClient::VERSION = '0.5';
-}
+
 use LWP::UserAgent;
 use HTTP::Date qw/ time2str /;
 use URI::QueryParam;
 use MIME::Base64;
 use Digest::SHA qw( hmac_sha256_base64 );
 use Digest::MD5 qw( md5_base64 );
+
+use namespace::clean;
 
 sub new {
     my $class = shift;
@@ -21,7 +21,7 @@ sub new {
     if ( $type && $type =~ m/^Blob$/i ) { # |Table|Queue
         $type = ucfirst( $type );
         $class .= '::' . $type;
-        eval "require $class;";
+        eval "require $class;"; ## no critic (ProhibitStringyEval)
         # die "Unsupported StorageClient $class: $@" if $@;
     }
     my $obj = bless {}, $class;
@@ -240,18 +240,5 @@ Specifying the authorization header and send 'DELETE' request.
 =head2 post
 
 Specifying the authorization header and send 'POST' request.
-
-=head1 AUTHOR
-
-Junnama Noda <junnama@alfasado.jp>
-
-=head1 COPYRIGHT
-
-Copyright (C) 2013, Junnama Noda.
-
-=head1 LICENSE
-
-This program is free software;
-you can redistribute it and modify it under the same terms as Perl itself.
 
 =cut

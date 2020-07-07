@@ -1,12 +1,9 @@
-#!/bin/false
+#!perl
 
 use strict;
 use warnings;
 
 package Net::Azure::StorageClient::MIMEType;
-{
-  $Net::Azure::StorageClient::MIMEType = '0.1';
-}
 
 sub new {
     my $class = shift;

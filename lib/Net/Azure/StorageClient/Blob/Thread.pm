@@ -4,13 +4,12 @@ use strict;
 use warnings;
 
 package Net::Azure::StorageClient::Blob::Thread;
-use base qw/Net::Azure::StorageClient::Blob/;
-{
-  $Net::Azure::StorageClient::Blob::Thread::VERSION = '0.11';
-}
 
+use parent qw/Net::Azure::StorageClient::Blob/;
 use threads;
 use Thread::Semaphore;
+
+use namespace::clean;
 
 sub download_use_thread {
     my ( $self, $args ) = @_;
