@@ -140,7 +140,7 @@ sub set_container_acl {
         $params->{ headers }->{ 'x-ms-blob-public-access' } = $public_access;
     }
     my $Permission = $params->{ Permission } || 'rwdl';
-    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) = localtime( time );
+    my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, undef ) = localtime( time );
     my $ts = sprintf( '%04d-%02d-%02d', $year + 1900, $mon + 1, $mday );
     my $id = $self->_signed_identifier( 64 );
     my $SignedIdentifiers = { SignedIdentifier => { Id => $id,
