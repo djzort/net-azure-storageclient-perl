@@ -13,20 +13,14 @@ if ($ENV{AUTOMATED_TESTING}) {
     'Testing this module required account and primary access key of Windows Azure Blob Storage.';
 }
 
-my $account_name = '';
-my $primary_access_key = '';
+my $account_name = $ENV{TESTING_AZURE_ACCOUNT_NAME};
+my $primary_access_key = $ENV{TESTING_AZURE_ACCESS_KEY};
 
-if (! $account_name ) {
-    diag 'Please enter your account name of Windows Azure Blob Storage:';
-    $account_name = <STDIN>;
-    chomp( $account_name );
-}
+diag 'Please provide an account name of Windows Azure Blob Storage via TESTING_AZURE_ACCOUNT_NAME'
+    unless $account_name;
 
-if ($account_name && ! $primary_access_key ) { #ask only when account name was provided
-    diag 'Please enter your primary access key of Windows Azure Blob Storage:';
-    $primary_access_key = <STDIN>;
-    chomp( $primary_access_key );
-}
+diag 'Please provide a primary access key of Windows Azure Blob Storage via TESTING_AZURE_ACCESS_KEY'
+    unless $primary_access_key;
 
 if ( (! $account_name ) || (! $primary_access_key ) ) {
     plan skip_all =>
@@ -34,10 +28,6 @@ if ( (! $account_name ) || (! $primary_access_key ) ) {
 }
 else {
     plan tests => 15;
-}
-
-if ( (! $account_name ) || (! $primary_access_key ) ) {
-    die 'account_name and primary_access_key are required.'
 }
 
 my $tempdir = tempdir();
