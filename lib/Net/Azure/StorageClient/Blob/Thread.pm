@@ -1,5 +1,5 @@
 #!perl
-# ABSTRACT: 'threads' verion of object representing Blobs in Azure Blob Storage
+# ABSTRACT: 'threads' version of object representing Blobs in Azure Blob Storage
 
 use strict;
 use warnings;

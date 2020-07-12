@@ -1,5 +1,5 @@
 #!perl
-# ABSTRACT: MIME related functions for Azure Blob Strorage client
+# ABSTRACT: MIME related functions for Azure Blob Storage client
 
 use strict;
 use warnings;
