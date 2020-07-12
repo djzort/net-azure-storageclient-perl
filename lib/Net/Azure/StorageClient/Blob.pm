@@ -1,4 +1,5 @@
 #!perl
+# ABSTRACT: Object representing a blob in Azure Blob Storage
 
 use strict;
 use warnings;

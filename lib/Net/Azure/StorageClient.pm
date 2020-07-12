@@ -1,4 +1,5 @@
 #!perl
+# ABSTRACT: Client for Azure Blob Storage
 
 use strict;
 use warnings;

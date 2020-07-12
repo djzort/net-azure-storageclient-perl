@@ -1,4 +1,5 @@
 #!perl
+# ABSTRACT: MIME related functions for Azure Blob Strorage client
 
 use strict;
 use warnings;

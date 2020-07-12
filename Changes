@@ -1,5 +1,8 @@
 Revision history for Perl extension Net::Azure::StorageClient.
 
+0.5_03  Sat Jul 11 17:07::00 2020
+    - Pod changes via dist.ini
+
 0.5_02  Thu Jul 9 22:27:00 2020
     - Adjust tests to use environment variables
 
