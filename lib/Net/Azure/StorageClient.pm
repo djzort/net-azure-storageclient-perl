@@ -71,6 +71,14 @@ sub sign {
     if (! defined $length ) {
         $length = '';
     }
+    elsif ( $length == 0 && $api_version gt '2014-02-14' ) {
+        # https://docs.microsoft.com/en-us/rest/api/storageservices/authorize-with-shared-key:
+        # "In the current version, the Content-Length field must be an empty string if
+        # the content length of the request is zero. In version 2014-02-14 and earlier,
+        # the content length was included even if zero. See below for more information
+        # on the old behavior."
+        $length = '';
+    }
     my $md5 = $req->header( 'Content-MD5' ) || '';
     my $content_type = $req->header( 'Content-Type' ) || '';
     my $date = $req->header( 'Date' ) || '';
@@ -112,7 +120,8 @@ sub request {
     }
     $method = 'GET' unless $method;
     my $req = HTTP::Request->new( $method => $url );
-    $req->content_length( length( $body ) ) if defined $body;
+    my $length = defined $body ? length($body) : 0;
+    $req->content_length( $length );
     $req = $self->sign( $req, $params );
     $req->content( $body ) if defined $body;
     return $ua->request( $req );

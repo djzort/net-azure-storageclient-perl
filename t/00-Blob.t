@@ -15,6 +15,7 @@ if ($ENV{AUTOMATED_TESTING}) {
 
 my $account_name = $ENV{TESTING_AZURE_ACCOUNT_NAME};
 my $primary_access_key = $ENV{TESTING_AZURE_ACCESS_KEY};
+my $api_version = $ENV{TESTING_AZURE_API_VERSION} // '2014-02-14';
 
 diag 'Please provide an account name of Windows Azure Blob Storage via TESTING_AZURE_ACCOUNT_NAME'
     unless $account_name;
@@ -39,6 +40,7 @@ my $client = Net::Azure::StorageClient->new(
                                              type => 'Blob',
                                              account_name => $account_name,
                                              primary_access_key => $primary_access_key,
+                                             api_version => $api_version,
                                             );
 
 isa_ok $client, 'Net::Azure::StorageClient::Blob';
